@@ -1,0 +1,12 @@
+{
+  "name": "braille-six-input",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "lint": "echo 'No lint step yet'",
+    "test": "echo 'No tests yet'"
+  }
+}
+
