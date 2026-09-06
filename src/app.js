@@ -1,4 +1,5 @@
 import {
+  CHOON_MASK,
   DAKUTEN_MASK,
   DAKUON_MAP,
   HANDAKUTEN_MASK,
@@ -87,15 +88,29 @@ function updateView() {
 }
 
 function resolveChord(mask) {
-  if (state.numberMode && mask !== NUMBER_PREFIX_MASK) {
+  if (state.numberMode) {
+    if (mask === NUMBER_PREFIX_MASK) {
+      // 数字符を続けて入力しても、数字モードを継続するだけでよい。
+      return null;
+    }
+
     const number = NUMBER_MAP.get(mask);
+    if (number !== undefined) {
+      // 数字が続く限り、数符を打ち直さなくても数字モードを維持する。
+      return number;
+    }
+
+    // 数字以外のマスが来たら数字モードを終了し、このマスは通常どおり処理する。
     state.numberMode = false;
-    return number ?? "？";
   }
 
   if (mask === NUMBER_PREFIX_MASK) {
     state.numberMode = true;
-    return "数";
+    return null;
+  }
+
+  if (mask === CHOON_MASK) {
+    return "ー";
   }
 
   if (mask === DAKUTEN_MASK) {

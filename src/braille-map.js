@@ -72,6 +72,9 @@ export const HANDAKUON_MAP = new Map(
 
 export const NUMBER_PREFIX_MASK = dotMask(3, 4, 5, 6);
 
+// 長音符(ー): ウ列・オ列の長音などを表す。点2・5。
+export const CHOON_MASK = dotMask(2, 5);
+
 const numberPatterns = {
   "1": [1],
   "2": [1, 2],
