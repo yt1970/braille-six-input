@@ -1,4 +1,6 @@
 import {
+  ALPHA_MAP,
+  ALPHA_PREFIX,
   CHOON_MASK,
   DAKUTEN_MASK,
   DAKUON_MAP,
@@ -48,6 +50,7 @@ const state = {
   history: [],
   pendingModifier: null,
   numberMode: false,
+  alphabetMode: false,
 };
 
 const compositionText = document.querySelector("#compositionText");
@@ -75,6 +78,8 @@ function updateView() {
     compositionText.textContent = modifierLabel(state.pendingModifier);
   } else if (state.numberMode) {
     compositionText.textContent = "数字モード";
+  } else if (state.alphabetMode) {
+    compositionText.textContent = "アルファベットモード";
   } else {
     compositionText.textContent = "待機中";
   }
@@ -104,8 +109,29 @@ function resolveChord(mask) {
     state.numberMode = false;
   }
 
+  if (state.alphabetMode) {
+    if (mask === ALPHA_PREFIX) {
+      // 外字符を続けて入力しても、アルファベットモードを継続するだけでよい。
+      return null;
+    }
+
+    const letter = ALPHA_MAP.get(mask);
+    if (letter !== undefined) {
+      // アルファベットが続く限り、外字符を打ち直さなくてもモードを維持する。
+      return letter;
+    }
+
+    // アルファベット以外のマスが来たらモードを終了し、このマスは通常どおり処理する。
+    state.alphabetMode = false;
+  }
+
   if (mask === NUMBER_PREFIX_MASK) {
     state.numberMode = true;
+    return null;
+  }
+
+  if (mask === ALPHA_PREFIX) {
+    state.alphabetMode = true;
     return null;
   }
 
@@ -169,6 +195,7 @@ function resetInput() {
   state.history = [];
   state.pendingModifier = null;
   state.numberMode = false;
+  state.alphabetMode = false;
   updateView();
 }
 
