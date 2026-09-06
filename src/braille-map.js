@@ -109,3 +109,13 @@ const alphaPatterns = {
 export const ALPHA_MAP = new Map(
   Object.entries(alphaPatterns).map(([letter, dots]) => [dotMask(...dots), letter]),
 );
+
+// 第1鉤括弧「」: 点3・6の1マス。開き・閉じで同じマスを使い、交互に出力する。
+// 第2鉤括弧(『』、第1鉤括弧の中で使うもの)は2マス構成(開始:5・6→3、終了:6→2・3)で
+// 今回のMVP(1マス即時確定モデル)では未対応。『点訳のてびき 第4版』準拠。
+export const KAGI_MASK = dotMask(3, 6);
+
+// 第1丸括弧(): 点2・3・5・6の1マス。開き・閉じで同じマスを使い、交互に出力する。
+// 第2丸括弧(二重括弧、第1丸括弧の中で使うもの)は2マス構成(開始:5→2・3・5・6、
+// 終了:2・3・5・6→2)で今回のMVPでは未対応。『点訳のてびき 第4版』準拠。
+export const KAKKO_MASK = dotMask(2, 3, 5, 6);
