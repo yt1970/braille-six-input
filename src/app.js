@@ -6,6 +6,8 @@ import {
   DAKUON_MAP,
   HANDAKUTEN_MASK,
   HANDAKUON_MAP,
+  KAGI_MASK,
+  KAKKO_MASK,
   KANA_MAP,
   KANA_TO_MASK,
   NUMBER_MAP,
@@ -51,6 +53,8 @@ const state = {
   pendingModifier: null,
   numberMode: false,
   alphabetMode: false,
+  kagiOpen: true,
+  kakkoOpen: true,
 };
 
 const compositionText = document.querySelector("#compositionText");
@@ -139,6 +143,20 @@ function resolveChord(mask) {
     return "ー";
   }
 
+  if (mask === KAGI_MASK) {
+    // 第1鉤括弧: 開き「と閉じ」は同じマスなので、交互に出力する。
+    const symbol = state.kagiOpen ? "「" : "」";
+    state.kagiOpen = !state.kagiOpen;
+    return symbol;
+  }
+
+  if (mask === KAKKO_MASK) {
+    // 第1丸括弧: 開き(と閉じ)は同じマスなので、交互に出力する。
+    const symbol = state.kakkoOpen ? "(" : ")";
+    state.kakkoOpen = !state.kakkoOpen;
+    return symbol;
+  }
+
   if (mask === DAKUTEN_MASK) {
     state.pendingModifier = "daku";
     return null;
@@ -196,6 +214,8 @@ function resetInput() {
   state.pendingModifier = null;
   state.numberMode = false;
   state.alphabetMode = false;
+  state.kagiOpen = true;
+  state.kakkoOpen = true;
   updateView();
 }
 
