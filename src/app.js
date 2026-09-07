@@ -207,6 +207,16 @@ function removeLast() {
   updateView();
 }
 
+function insertSpace() {
+  // 分かち書きの区切り。数字・アルファベットモードや保留中の符号は、
+  // 他の非対象マスと同様にここで解除する。
+  state.numberMode = false;
+  state.alphabetMode = false;
+  state.pendingModifier = null;
+  state.history.push(" ");
+  updateView();
+}
+
 function resetInput() {
   state.pressedCodes.clear();
   state.pressedDots.clear();
@@ -236,6 +246,11 @@ function handleKeyDown(event) {
   } else if (event.code === "Escape") {
     event.preventDefault();
     resetInput();
+  } else if (event.code === "Space") {
+    event.preventDefault();
+    if (state.pressedDots.size === 0) {
+      insertSpace();
+    }
   }
 }
 
