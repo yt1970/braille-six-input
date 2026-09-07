@@ -12,6 +12,7 @@ import {
   KANA_TO_MASK,
   NUMBER_MAP,
   NUMBER_PREFIX_MASK,
+  PUNCTUATION_MAP,
   dotMask,
 } from "./braille-map.js";
 
@@ -155,6 +156,13 @@ function resolveChord(mask) {
     const symbol = state.kakkoOpen ? "(" : ")";
     state.kakkoOpen = !state.kakkoOpen;
     return symbol;
+  }
+
+  const punctuation = PUNCTUATION_MAP.get(mask);
+  if (punctuation !== undefined) {
+    // 読点「、」・疑問符「？」・ピリオド「.」など、既存の仮名・符号と
+    // マスが衝突しない句読点記号 (Issue #2)。
+    return punctuation;
   }
 
   if (mask === DAKUTEN_MASK) {
