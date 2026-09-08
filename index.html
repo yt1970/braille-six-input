@@ -28,7 +28,10 @@
 
         <div class="result" aria-label="入力結果">
           <div class="result-label">出力</div>
-          <div id="outputText" class="output-text">まだ入力がありません</div>
+          <div class="output-line">
+            <span id="outputText" class="output-text"></span
+            ><span id="cursor" class="cursor" aria-hidden="true"></span>
+          </div>
         </div>
 
         <div class="log" aria-label="入力ログ">
@@ -39,7 +42,7 @@
         <button id="clearButton" class="clear-button" type="button">入力をクリア</button>
 
         <p class="hint">
-          操作はキーボードのみです。1文字分の点を同時に押して離すと、対応するかなや数字が出ます。Backspaceでも1文字消せます。
+          操作はキーボードのみです。1文字分の点を同時に押して離すと、対応するかなや数字が出ます。Backspaceでも1文字消せます。点滅する縦棒が、次に入力される位置(カーソル)です。
         </p>
       </section>
     </main>
