@@ -89,6 +89,22 @@ export const YOUDAKU_PREFIX_MASK = dotMask(4, 5);
 // 半濁音(HANDAKUTEN_MASK=点6)とは別の独立したマスであり、既存のどの機能とも衝突しない。
 export const YOUHANDAKU_PREFIX_MASK = dotMask(4, 6);
 
+// デュ・ヴュ・ヴョ・ヴイェの前置符号(点4・5・6、Issue #3-5)。
+// 他のどのマスとも衝突しない新規のマス。
+export const YOUDAKU_HANDAKU_PREFIX_MASK = dotMask(4, 5, 6);
+
+// 合拗音系(ウィ・クァ・ツァ系)とファ行の前置符号(点2・6、Issue #3-4-2/4-3)。
+// これは既存の疑問符「？」と同一マスであり、単独では判別できない。
+// そのため即座には確定させず、pendingModifier="goyoon"として次の1打を待ち、
+// 有効な組み合わせでなければ疑問符として確定させてから次のマスを改めて処理する
+// (app.js側のresolveChord()を参照)。
+export const GOYOON_PREFIX_MASK = dotMask(2, 6);
+
+// 合拗音系の濁音化(グ系)とヴァ行の前置符号(点2・5・6、Issue #3-4-2/4-3)。
+// 既存の句点「。」と同一マスであり、GOYOON_PREFIX_MASKと同様に
+// pendingModifier="goyoon_daku"として保留してから判定する。
+export const GOYOON_DAKU_PREFIX_MASK = dotMask(2, 5, 6);
+
 const numberPatterns = {
   "1": [1],
   "2": [1, 2],
@@ -121,21 +137,22 @@ export const KAGI_MASK = dotMask(3, 6);
 // 終了:2・3・5・6→2)で今回のMVPでは未対応。『点訳のてびき 第4版』準拠。
 export const KAKKO_MASK = dotMask(2, 3, 5, 6);
 
-// 句読点・記号 (Issue #2 / Issue #5で一部訂正)
+// 句読点・記号 (Issue #2 / Issue #5で一部訂正 / Issue #4対応)
 // 注意: 日本語点字は仮名と記号でマスパターンを共有し、前後のマスあけ等の
 // 文脈で判別する設計になっている。本アプリは現状「1マス=1意味」の即時確定
 // モデルのため、既存の仮名・拗音符と衝突するマスは実装を見送っている。
 //
-// Issue #2時点で衝突により未実装のまま: 中点「・」(4→拗音符と衝突),
+// 衝突により未実装のまま: 中点「・」(4→拗音符と衝突),
 // スラッシュ「/」(3,4→「や」と衝突)。
 //
+// 疑問符「？」(点2・6)と句点「。」(点2・5・6)は、Issue #4対応により
+// GOYOON_PREFIX_MASK / GOYOON_DAKU_PREFIX_MASKとして合拗音系と共有され、
+// app.js側のpendingModifierで保留・判定されるようになったため、
+// ここからは削除している(直接ここでは解決しない)。
+//
 // 読点「、」: 点5・6(旧・外字符と同一マス。外字符を廃止したことで有効化)。
-// 句点「。」: 点2・5・6(旧・ピリオドと同一マスだったため、ピリオドは削除)。
-// 疑問符「？」: 点2・6(Issue #5で訂正)。
 // 感嘆符「！」: 点2・3・5(Issue #5で新規追加、衝突なし)。
 export const PUNCTUATION_MAP = new Map([
   [dotMask(5, 6), "、"],
-  [dotMask(2, 5, 6), "。"],
-  [dotMask(2, 6), "？"],
   [dotMask(2, 3, 5), "！"],
 ]);
