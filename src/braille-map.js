@@ -75,6 +75,11 @@ export const NUMBER_PREFIX_MASK = dotMask(3, 4, 5, 6);
 // 長音符(ー): ウ列・オ列の長音などを表す。点2・5。
 export const CHOON_MASK = dotMask(2, 5);
 
+// 促音符(っ): 点2単独。濁音・拗音のような「前置符号+次のマス」の2回打ちではなく、
+// 長音符と同じく単独の1マスでそのまま「っ」を出力する(『点訳のてびき 第4版』準拠)。
+// 他のどのマスとも衝突しない。
+export const SOKUON_MASK = dotMask(2);
+
 const numberPatterns = {
   "1": [1],
   "2": [1, 2],

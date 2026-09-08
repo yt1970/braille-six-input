@@ -11,6 +11,7 @@ import {
   NUMBER_MAP,
   NUMBER_PREFIX_MASK,
   PUNCTUATION_MAP,
+  SOKUON_MASK,
   dotMask,
 } from "./braille-map.js";
 
@@ -127,6 +128,11 @@ function resolveChord(mask) {
 
   if (mask === CHOON_MASK) {
     return "ー";
+  }
+
+  if (mask === SOKUON_MASK) {
+    // 促音符(っ): 単独の1マス(点2)でそのまま出力する。
+    return "っ";
   }
 
   if (mask === KAGI_MASK) {
