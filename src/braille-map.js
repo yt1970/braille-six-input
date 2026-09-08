@@ -80,6 +80,15 @@ export const CHOON_MASK = dotMask(2, 5);
 // 他のどのマスとも衝突しない。
 export const SOKUON_MASK = dotMask(2);
 
+// 拗音符(点4)は既存のYOON_PREFIX_MASKとしてapp.js側で定義済み。
+// 拗濁音(ぎゃ・じゃ・ぢゃ・びゃ系)は点4・5を前置符号とする(Issue #3)。
+// 濁音(DAKUTEN_MASK=点5)とは別の独立したマスであり、既存のどの機能とも衝突しない。
+export const YOUDAKU_PREFIX_MASK = dotMask(4, 5);
+
+// 拗半濁音(ぴゃ系)は点4・6を前置符号とする(Issue #3)。
+// 半濁音(HANDAKUTEN_MASK=点6)とは別の独立したマスであり、既存のどの機能とも衝突しない。
+export const YOUHANDAKU_PREFIX_MASK = dotMask(4, 6);
+
 const numberPatterns = {
   "1": [1],
   "2": [1, 2],
