@@ -57,6 +57,8 @@ const state = {
 
 const compositionText = document.querySelector("#compositionText");
 const outputText = document.querySelector("#outputText");
+const outputChars = document.querySelector("#outputChars");
+const cursor = document.querySelector("#cursor");
 const historyText = document.querySelector("#historyText");
 const clearButton = document.querySelector("#clearButton");
 
@@ -84,9 +86,14 @@ function updateView() {
     compositionText.textContent = "待機中";
   }
 
-  outputText.textContent = state.history.length
-    ? state.history.join("")
-    : "まだ入力がありません";
+  const hasText = state.history.length > 0;
+  outputText.classList.toggle("has-text", hasText);
+  outputChars.textContent = state.history.join("");
+
+  // カーソル: 点を押している最中(まだ1文字が確定していない間)は
+  // 「入力中」の色に変え、点滅を止めることで進捗が視覚的にわかるようにする。
+  cursor.classList.toggle("is-composing", pressed.length > 0);
+
   historyText.textContent = state.history.length
     ? state.history.join(" ")
     : "-";
