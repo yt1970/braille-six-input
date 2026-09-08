@@ -135,10 +135,11 @@ function resolveChord(mask) {
     return null;
   }
 
-  if (mask === ALPHA_PREFIX) {
-    state.alphabetMode = true;
-    return null;
-  }
+  // 外字符(ALPHA_PREFIX、点5・6)は読点「、」と同一マスのため、
+  // ゆーちゃさんの判断により読点を優先し、ここでの新規発火(モード開始)は
+  // 無効化している。既にalphabetModeがtrueの場合の継続処理(上のブロック)は
+  // 残しているが、そもそもこのトリガーがないためalphabetModeはtrueにならない。
+  // Issue #4(複数マス表記の文脈判別)で両立できるようになったら復活させる想定。
 
   if (mask === CHOON_MASK) {
     return "ー";
