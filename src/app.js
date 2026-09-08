@@ -12,6 +12,8 @@ import {
   NUMBER_PREFIX_MASK,
   PUNCTUATION_MAP,
   SOKUON_MASK,
+  YOUDAKU_PREFIX_MASK,
+  YOUHANDAKU_PREFIX_MASK,
   dotMask,
 } from "./braille-map.js";
 
@@ -26,6 +28,8 @@ const DOT_KEY_CODES = {
 
 const YOON_PREFIX_MASK = dotMask(4);
 
+// 拗音(点4 / Issue #3-1)と、開拗音系の一部特殊音(Issue #3-4-1のうち
+// 前置符号が拗音符と同じ点4のもの: イェ・キェ・シェ・チェ・ニェ・ヒェ・スィ・ティ)。
 const YOON_MAP = new Map([
   ["きゃ", "か"], ["きゅ", "く"], ["きょ", "こ"],
   ["しゃ", "さ"], ["しゅ", "す"], ["しょ", "そ"],
@@ -34,8 +38,32 @@ const YOON_MAP = new Map([
   ["ひゃ", "は"], ["ひゅ", "ふ"], ["ひょ", "ほ"],
   ["みゃ", "ま"], ["みゅ", "む"], ["みょ", "も"],
   ["りゃ", "ら"], ["りゅ", "る"], ["りょ", "ろ"],
+  ["イェ", "え"], ["キェ", "け"], ["シェ", "せ"],
+  ["チェ", "て"], ["ニェ", "ね"], ["ヒェ", "へ"],
+  ["スィ", "し"], ["ティ", "ち"],
 ].reduce((map, [youon, base]) => {
   map.set(`${YOON_PREFIX_MASK}:${KANA_TO_MASK.get(base)}`, youon);
+  return map;
+}, new Map()));
+
+// 拗濁音(点4・5 / Issue #3-2)と、同じ前置符号を使う開拗音系の特殊音
+// (ジェ・ズィ・ディ、Issue #3-4-1)。
+const YOUDAKU_MAP = new Map([
+  ["ぎゃ", "か"], ["ぎゅ", "く"], ["ぎょ", "こ"],
+  ["じゃ", "さ"], ["じゅ", "す"], ["じょ", "そ"],
+  ["ぢゃ", "た"], ["ぢゅ", "つ"], ["ぢょ", "と"],
+  ["びゃ", "は"], ["びゅ", "ふ"], ["びょ", "ほ"],
+  ["ジェ", "せ"], ["ズィ", "し"], ["ディ", "ち"],
+].reduce((map, [youdaku, base]) => {
+  map.set(`${YOUDAKU_PREFIX_MASK}:${KANA_TO_MASK.get(base)}`, youdaku);
+  return map;
+}, new Map()));
+
+// 拗半濁音(点4・6 / Issue #3-3)。
+const YOUHANDAKU_MAP = new Map([
+  ["ぴゃ", "は"], ["ぴゅ", "ふ"], ["ぴょ", "ほ"],
+].reduce((map, [youhandaku, base]) => {
+  map.set(`${YOUHANDAKU_PREFIX_MASK}:${KANA_TO_MASK.get(base)}`, youhandaku);
   return map;
 }, new Map()));
 
@@ -73,6 +101,8 @@ function modifierLabel(modifier) {
     daku: "濁音符を入力中。続けて清音を入力",
     handaku: "半濁音符を入力中。続けて「は行」を入力",
     youon: "拗音符を入力中。続けて清音を入力",
+    youdaku: "拗濁音符を入力中。続けて清音を入力",
+    youhandaku: "拗半濁音符を入力中。続けて「は行」を入力",
   }[modifier];
 }
 
@@ -168,6 +198,16 @@ function resolveChord(mask) {
     state.pendingModifier = "youon";
     return null;
   }
+  if (mask === YOUDAKU_PREFIX_MASK) {
+    // 拗濁音(点4・5)。濁音(点5)・拗音(点4)とは別マスなので衝突しない (Issue #3)。
+    state.pendingModifier = "youdaku";
+    return null;
+  }
+  if (mask === YOUHANDAKU_PREFIX_MASK) {
+    // 拗半濁音(点4・6)。半濁音(点6)・拗音(点4)とは別マスなので衝突しない (Issue #3)。
+    state.pendingModifier = "youhandaku";
+    return null;
+  }
 
   if (state.pendingModifier === "daku") {
     const kana = DAKUON_BY_MASK.get(mask);
@@ -181,6 +221,16 @@ function resolveChord(mask) {
   }
   if (state.pendingModifier === "youon") {
     const kana = YOON_MAP.get(`${YOON_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (state.pendingModifier === "youdaku") {
+    const kana = YOUDAKU_MAP.get(`${YOUDAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (state.pendingModifier === "youhandaku") {
+    const kana = YOUHANDAKU_MAP.get(`${YOUHANDAKU_PREFIX_MASK}:${mask}`);
     state.pendingModifier = null;
     return kana ?? "？";
   }
