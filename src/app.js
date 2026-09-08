@@ -1,6 +1,4 @@
 import {
-  ALPHA_MAP,
-  ALPHA_PREFIX,
   CHOON_MASK,
   DAKUTEN_MASK,
   DAKUON_MAP,
@@ -53,7 +51,6 @@ const state = {
   history: [],
   pendingModifier: null,
   numberMode: false,
-  alphabetMode: false,
   kagiOpen: true,
   kakkoOpen: true,
 };
@@ -83,8 +80,6 @@ function updateView() {
     compositionText.textContent = modifierLabel(state.pendingModifier);
   } else if (state.numberMode) {
     compositionText.textContent = "数字モード";
-  } else if (state.alphabetMode) {
-    compositionText.textContent = "アルファベットモード";
   } else {
     compositionText.textContent = "待機中";
   }
@@ -114,32 +109,13 @@ function resolveChord(mask) {
     state.numberMode = false;
   }
 
-  if (state.alphabetMode) {
-    if (mask === ALPHA_PREFIX) {
-      // 外字符を続けて入力しても、アルファベットモードを継続するだけでよい。
-      return null;
-    }
-
-    const letter = ALPHA_MAP.get(mask);
-    if (letter !== undefined) {
-      // アルファベットが続く限り、外字符を打ち直さなくてもモードを維持する。
-      return letter;
-    }
-
-    // アルファベット以外のマスが来たらモードを終了し、このマスは通常どおり処理する。
-    state.alphabetMode = false;
-  }
-
   if (mask === NUMBER_PREFIX_MASK) {
     state.numberMode = true;
     return null;
   }
 
-  // 外字符(ALPHA_PREFIX、点5・6)は読点「、」と同一マスのため、
-  // ゆーちゃさんの判断により読点を優先し、ここでの新規発火(モード開始)は
-  // 無効化している。既にalphabetModeがtrueの場合の継続処理(上のブロック)は
-  // 残しているが、そもそもこのトリガーがないためalphabetModeはtrueにならない。
-  // Issue #4(複数マス表記の文脈判別)で両立できるようになったら復活させる想定。
+  // 外字符(点5・6)は読点「、」と同一マスのため廃止済み。
+  // アルファベット入力機能は現状提供していない(Issue #4参照)。
 
   if (mask === CHOON_MASK) {
     return "ー";
@@ -161,8 +137,8 @@ function resolveChord(mask) {
 
   const punctuation = PUNCTUATION_MAP.get(mask);
   if (punctuation !== undefined) {
-    // 読点「、」・疑問符「？」・ピリオド「.」など、既存の仮名・符号と
-    // マスが衝突しない句読点記号 (Issue #2)。
+    // 読点「、」・句点「。」・疑問符「？」・感嘆符「！」など、既存の仮名・符号と
+    // マスが衝突しない句読点記号 (Issue #2 / Issue #5)。
     return punctuation;
   }
 
@@ -217,10 +193,9 @@ function removeLast() {
 }
 
 function insertSpace() {
-  // 分かち書きの区切り。数字・アルファベットモードや保留中の符号は、
+  // 分かち書きの区切り。数字モードや保留中の符号は、
   // 他の非対象マスと同様にここで解除する。
   state.numberMode = false;
-  state.alphabetMode = false;
   state.pendingModifier = null;
   state.history.push(" ");
   updateView();
@@ -232,7 +207,6 @@ function resetInput() {
   state.history = [];
   state.pendingModifier = null;
   state.numberMode = false;
-  state.alphabetMode = false;
   state.kagiOpen = true;
   state.kakkoOpen = true;
   updateView();
