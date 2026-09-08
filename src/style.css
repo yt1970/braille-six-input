@@ -109,6 +109,44 @@ h1 {
   font-size: clamp(2rem, 6vw, 4rem);
   line-height: 1.1;
   letter-spacing: 0.08em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.output-placeholder {
+  color: var(--muted);
+  font-size: clamp(1.1rem, 3vw, 1.4rem);
+  letter-spacing: normal;
+}
+
+.output-text.has-text .output-placeholder {
+  display: none;
+}
+
+.output-chars {
+  color: var(--text);
+}
+
+.cursor {
+  display: inline-block;
+  width: 0.06em;
+  height: 0.85em;
+  margin-left: 0.04em;
+  vertical-align: -0.08em;
+  background: var(--accent-strong);
+  animation: blink 1s steps(1, start) infinite;
+}
+
+.cursor.is-composing {
+  background: #c96a2f;
+  animation: none;
+  opacity: 1;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 .history-text {
