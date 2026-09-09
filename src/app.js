@@ -176,7 +176,79 @@ function updateView() {
   historyText.classList.toggle("is-empty", !hasHistory);
 }
 
+// pendingModifierが保留中に、次に入力されたマスを解決する。
+// Codexレビュー指摘(P1)対応: 以前はこの判定より前に数字符・記号などの
+// 特殊マス判定を行っていたため、保留中でも別の意味として即座に処理されて
+// しまい、後から矛盾した文字が確定する不具合があった(例: 「？」入力後に
+// 数符→1→か と打つと「1クァ」になってしまう)。resolveChord()の先頭で
+// 必ずこちらを先に評価するよう構造を変更した。
+function resolvePendingModifier(mask) {
+  const modifier = state.pendingModifier;
+
+  if (modifier === "daku") {
+    const kana = DAKUON_BY_MASK.get(mask);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "handaku") {
+    const kana = HANDAKUON_BY_MASK.get(mask);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youon") {
+    const kana = YOON_MAP.get(`${YOON_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youdaku") {
+    const kana = YOUDAKU_MAP.get(`${YOUDAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youhandaku") {
+    const kana = YOUHANDAKU_MAP.get(`${YOUHANDAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youdaku_handaku") {
+    const kana = YOUDAKU_HANDAKU_MAP.get(`${YOUDAKU_HANDAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "goyoon") {
+    const combo = GOYOON_MAP.get(`${GOYOON_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    if (combo !== undefined) {
+      return combo;
+    }
+    // 合拗音系として無効な組み合わせだった場合、1打目は疑問符として確定させ、
+    // 今回のマスは新規入力として改めて解決し直す。pendingModifierは既に
+    // nullなので、resolveChord()は通常どおり数字符・記号なども判定できる。
+    state.history.push("？");
+    return resolveChord(mask);
+  }
+  if (modifier === "goyoon_daku") {
+    const combo = GOYOON_DAKU_MAP.get(`${GOYOON_DAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    if (combo !== undefined) {
+      return combo;
+    }
+    // 合拗音系(濁音化)として無効な組み合わせだった場合、1打目は句点として
+    // 確定させ、今回のマスは新規入力として改めて解決し直す。
+    state.history.push("。");
+    return resolveChord(mask);
+  }
+
+  return null;
+}
+
 function resolveChord(mask) {
+  // 保留中の前置符号があれば、他のどの判定よりも先にこちらを評価する
+  // (Codexレビュー指摘のP1対応。詳細はresolvePendingModifier()のコメント参照)。
+  if (state.pendingModifier) {
+    return resolvePendingModifier(mask);
+  }
+
   if (state.numberMode) {
     if (mask === NUMBER_PREFIX_MASK) {
       // 数字符を続けて入力しても、数字モードを継続するだけでよい。
@@ -272,59 +344,6 @@ function resolveChord(mask) {
     return null;
   }
 
-  if (state.pendingModifier === "daku") {
-    const kana = DAKUON_BY_MASK.get(mask);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "handaku") {
-    const kana = HANDAKUON_BY_MASK.get(mask);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "youon") {
-    const kana = YOON_MAP.get(`${YOON_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "youdaku") {
-    const kana = YOUDAKU_MAP.get(`${YOUDAKU_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "youhandaku") {
-    const kana = YOUHANDAKU_MAP.get(`${YOUHANDAKU_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "youdaku_handaku") {
-    const kana = YOUDAKU_HANDAKU_MAP.get(`${YOUDAKU_HANDAKU_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "goyoon") {
-    const combo = GOYOON_MAP.get(`${GOYOON_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    if (combo !== undefined) {
-      return combo;
-    }
-    // 合拗音系として無効な組み合わせだった場合、1打目は疑問符として確定させ、
-    // 今回のマスは新規入力として改めて解決し直す。
-    state.history.push("？");
-    return resolveChord(mask);
-  }
-  if (state.pendingModifier === "goyoon_daku") {
-    const combo = GOYOON_DAKU_MAP.get(`${GOYOON_DAKU_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    if (combo !== undefined) {
-      return combo;
-    }
-    // 合拗音系(濁音化)として無効な組み合わせだった場合、1打目は句点として
-    // 確定させ、今回のマスは新規入力として改めて解決し直す。
-    state.history.push("。");
-    return resolveChord(mask);
-  }
-
   return KANA_MAP.get(mask) ?? "？";
 }
 
@@ -346,11 +365,24 @@ function removeLast() {
   updateView();
 }
 
-function insertSpace() {
-  // 分かち書きの区切り。数字モードや保留中の符号は、
-  // 他の非対象マスと同様にここで解除する。
-  state.numberMode = false;
+// 保留中の前置符号(疑問符・句点・濁音符など)があれば、それを打ち切りの形で
+// 確定させてから消す。Codexレビュー指摘(P1)対応: 以前はSpace入力時に
+// pendingModifierを黙って消していたため、「？」や「。」の保留状態のまま
+// 分かち書きに進むと、その文字が永遠に確定されずに消えてしまっていた。
+function flushPendingModifier() {
+  if (!state.pendingModifier) {
+    return;
+  }
+  const fallback = state.pendingModifier === "goyoon_daku" ? "。" : "？";
   state.pendingModifier = null;
+  state.history.push(fallback);
+}
+
+function insertSpace() {
+  // 分かち書きの区切り。保留中の符号があれば先に確定させてから、
+  // 数字モードなど他の非対象マスと同様にここで解除する。
+  flushPendingModifier();
+  state.numberMode = false;
   state.history.push(" ");
   updateView();
 }
