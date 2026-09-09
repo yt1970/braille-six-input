@@ -2,6 +2,8 @@ import {
   CHOON_MASK,
   DAKUTEN_MASK,
   DAKUON_MAP,
+  GOYOON_DAKU_PREFIX_MASK,
+  GOYOON_PREFIX_MASK,
   HANDAKUTEN_MASK,
   HANDAKUON_MAP,
   KAGI_MASK,
@@ -12,6 +14,7 @@ import {
   NUMBER_PREFIX_MASK,
   PUNCTUATION_MAP,
   SOKUON_MASK,
+  YOUDAKU_HANDAKU_PREFIX_MASK,
   YOUDAKU_PREFIX_MASK,
   YOUHANDAKU_PREFIX_MASK,
   dotMask,
@@ -59,13 +62,52 @@ const YOUDAKU_MAP = new Map([
   return map;
 }, new Map()));
 
-// 拗半濁音(点4・6 / Issue #3-3)。
+// 拗半濁音(点4・6 / Issue #3-3)と、同じ前置符号を使う特殊音
+// (テュ・フュ・フョ、Issue #3-5)。
 const YOUHANDAKU_MAP = new Map([
   ["ぴゃ", "は"], ["ぴゅ", "ふ"], ["ぴょ", "ほ"],
+  ["テュ", "つ"], ["フュ", "ゆ"], ["フョ", "よ"],
 ].reduce((map, [youhandaku, base]) => {
   map.set(`${YOUHANDAKU_PREFIX_MASK}:${KANA_TO_MASK.get(base)}`, youhandaku);
   return map;
 }, new Map()));
+
+// デュ・ヴュ・ヴョ・ヴイェ(点4・5・6 / Issue #3-5)。
+// 他のどのマスとも衝突しない新規の前置符号なので、保留判定は不要。
+const YOUDAKU_HANDAKU_MAP = new Map([
+  ["デュ", "つ"], ["ヴュ", "ゆ"], ["ヴョ", "よ"], ["ヴイェ", "え"],
+].reduce((map, [combo, base]) => {
+  map.set(`${YOUDAKU_HANDAKU_PREFIX_MASK}:${KANA_TO_MASK.get(base)}`, combo);
+  return map;
+}, new Map()));
+
+// 合拗音系(ウィ・クァ・ツァ系)とファ行(点2・6 / Issue #3-4-2/4-3)。
+// 前置符号が疑問符「？」と同じマスのため、フォールバック時は「？」を使う。
+const GOYOON_MAP = new Map([
+  ["ウィ", "い"], ["ウェ", "え"], ["ウォ", "お"],
+  ["クァ", "か"], ["クィ", "き"], ["クェ", "け"], ["クォ", "こ"],
+  ["ツァ", "た"], ["ツィ", "ち"], ["ツェ", "て"], ["ツォ", "と"],
+  ["ファ", "は"], ["フィ", "ひ"], ["フェ", "へ"], ["フォ", "ほ"],
+].reduce((map, [combo, base]) => {
+  map.set(`${GOYOON_PREFIX_MASK}:${KANA_TO_MASK.get(base)}`, combo);
+  return map;
+}, new Map()));
+
+// 合拗音系の濁音化(グ系)とヴァ行(点2・5・6 / Issue #3-4-2/4-3)。
+// 前置符号が句点「。」と同じマスのため、フォールバック時は「。」を使う。
+const GOYOON_DAKU_MAP = new Map([
+  ["グァ", "か"], ["グィ", "き"], ["グェ", "け"], ["グォ", "こ"],
+  ["ヴァ", "は"], ["ヴィ", "ひ"], ["ヴェ", "へ"], ["ヴォ", "ほ"],
+].reduce((map, [combo, base]) => {
+  map.set(`${GOYOON_DAKU_PREFIX_MASK}:${KANA_TO_MASK.get(base)}`, combo);
+  return map;
+}, new Map()));
+
+// トゥ・ドゥ・ヴ(Issue #3-5)は上記2つの合拗音系マップに直接追加する
+// (前置符号が同じで、なおかつ基準マスがまだ使われていないため)。
+GOYOON_MAP.set(`${GOYOON_PREFIX_MASK}:${dotMask(1, 3, 4, 5)}`, "トゥ");
+GOYOON_DAKU_MAP.set(`${GOYOON_DAKU_PREFIX_MASK}:${dotMask(1, 3, 4, 5)}`, "ドゥ");
+GOYOON_DAKU_MAP.set(`${GOYOON_DAKU_PREFIX_MASK}:${KANA_TO_MASK.get("ゆ")}`, "ヴ");
 
 const DAKUON_BY_MASK = new Map(
   [...DAKUON_MAP.entries()].map(([kana, mask]) => [mask, kana]),
@@ -103,6 +145,9 @@ function modifierLabel(modifier) {
     youon: "拗音符を入力中。続けて清音を入力",
     youdaku: "拗濁音符を入力中。続けて清音を入力",
     youhandaku: "拗半濁音符を入力中。続けて「は行」を入力",
+    youdaku_handaku: "デュ・ヴュ系を入力中。続けて清音を入力",
+    goyoon: "疑問符または合拗音系を入力中。続けて清音を入力",
+    goyoon_daku: "句点または合拗音系(濁音)を入力中。続けて清音を入力",
   }[modifier];
 }
 
@@ -131,7 +176,79 @@ function updateView() {
   historyText.classList.toggle("is-empty", !hasHistory);
 }
 
+// pendingModifierが保留中に、次に入力されたマスを解決する。
+// Codexレビュー指摘(P1)対応: 以前はこの判定より前に数字符・記号などの
+// 特殊マス判定を行っていたため、保留中でも別の意味として即座に処理されて
+// しまい、後から矛盾した文字が確定する不具合があった(例: 「？」入力後に
+// 数符→1→か と打つと「1クァ」になってしまう)。resolveChord()の先頭で
+// 必ずこちらを先に評価するよう構造を変更した。
+function resolvePendingModifier(mask) {
+  const modifier = state.pendingModifier;
+
+  if (modifier === "daku") {
+    const kana = DAKUON_BY_MASK.get(mask);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "handaku") {
+    const kana = HANDAKUON_BY_MASK.get(mask);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youon") {
+    const kana = YOON_MAP.get(`${YOON_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youdaku") {
+    const kana = YOUDAKU_MAP.get(`${YOUDAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youhandaku") {
+    const kana = YOUHANDAKU_MAP.get(`${YOUHANDAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "youdaku_handaku") {
+    const kana = YOUDAKU_HANDAKU_MAP.get(`${YOUDAKU_HANDAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    return kana ?? "？";
+  }
+  if (modifier === "goyoon") {
+    const combo = GOYOON_MAP.get(`${GOYOON_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    if (combo !== undefined) {
+      return combo;
+    }
+    // 合拗音系として無効な組み合わせだった場合、1打目は疑問符として確定させ、
+    // 今回のマスは新規入力として改めて解決し直す。pendingModifierは既に
+    // nullなので、resolveChord()は通常どおり数字符・記号なども判定できる。
+    state.history.push("？");
+    return resolveChord(mask);
+  }
+  if (modifier === "goyoon_daku") {
+    const combo = GOYOON_DAKU_MAP.get(`${GOYOON_DAKU_PREFIX_MASK}:${mask}`);
+    state.pendingModifier = null;
+    if (combo !== undefined) {
+      return combo;
+    }
+    // 合拗音系(濁音化)として無効な組み合わせだった場合、1打目は句点として
+    // 確定させ、今回のマスは新規入力として改めて解決し直す。
+    state.history.push("。");
+    return resolveChord(mask);
+  }
+
+  return null;
+}
+
 function resolveChord(mask) {
+  // 保留中の前置符号があれば、他のどの判定よりも先にこちらを評価する
+  // (Codexレビュー指摘のP1対応。詳細はresolvePendingModifier()のコメント参照)。
+  if (state.pendingModifier) {
+    return resolvePendingModifier(mask);
+  }
+
   if (state.numberMode) {
     if (mask === NUMBER_PREFIX_MASK) {
       // 数字符を続けて入力しても、数字モードを継続するだけでよい。
@@ -181,8 +298,9 @@ function resolveChord(mask) {
 
   const punctuation = PUNCTUATION_MAP.get(mask);
   if (punctuation !== undefined) {
-    // 読点「、」・句点「。」・疑問符「？」・感嘆符「！」など、既存の仮名・符号と
-    // マスが衝突しない句読点記号 (Issue #2 / Issue #5)。
+    // 読点「、」・感嘆符「！」など、既存の仮名・符号とマスが衝突しない句読点記号
+    // (Issue #2 / Issue #5)。疑問符・句点はGOYOON_PREFIX_MASK/
+    // GOYOON_DAKU_PREFIX_MASKとして下で扱う(Issue #4対応)。
     return punctuation;
   }
 
@@ -208,31 +326,22 @@ function resolveChord(mask) {
     state.pendingModifier = "youhandaku";
     return null;
   }
-
-  if (state.pendingModifier === "daku") {
-    const kana = DAKUON_BY_MASK.get(mask);
-    state.pendingModifier = null;
-    return kana ?? "？";
+  if (mask === YOUDAKU_HANDAKU_PREFIX_MASK) {
+    // デュ・ヴュ系(点4・5・6)。他のどのマスとも衝突しない (Issue #3-5)。
+    state.pendingModifier = "youdaku_handaku";
+    return null;
   }
-  if (state.pendingModifier === "handaku") {
-    const kana = HANDAKUON_BY_MASK.get(mask);
-    state.pendingModifier = null;
-    return kana ?? "？";
+  if (mask === GOYOON_PREFIX_MASK) {
+    // 合拗音系・ファ行(点2・6)。疑問符「？」と同一マスなので即座には
+    // 確定させず、次の1打を待ってから判定する (Issue #4対応)。
+    state.pendingModifier = "goyoon";
+    return null;
   }
-  if (state.pendingModifier === "youon") {
-    const kana = YOON_MAP.get(`${YOON_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "youdaku") {
-    const kana = YOUDAKU_MAP.get(`${YOUDAKU_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    return kana ?? "？";
-  }
-  if (state.pendingModifier === "youhandaku") {
-    const kana = YOUHANDAKU_MAP.get(`${YOUHANDAKU_PREFIX_MASK}:${mask}`);
-    state.pendingModifier = null;
-    return kana ?? "？";
+  if (mask === GOYOON_DAKU_PREFIX_MASK) {
+    // 合拗音系の濁音化・ヴァ行(点2・5・6)。句点「。」と同一マスなので
+    // GOYOON_PREFIX_MASKと同様に保留してから判定する (Issue #4対応)。
+    state.pendingModifier = "goyoon_daku";
+    return null;
   }
 
   return KANA_MAP.get(mask) ?? "？";
@@ -256,11 +365,24 @@ function removeLast() {
   updateView();
 }
 
-function insertSpace() {
-  // 分かち書きの区切り。数字モードや保留中の符号は、
-  // 他の非対象マスと同様にここで解除する。
-  state.numberMode = false;
+// 保留中の前置符号(疑問符・句点・濁音符など)があれば、それを打ち切りの形で
+// 確定させてから消す。Codexレビュー指摘(P1)対応: 以前はSpace入力時に
+// pendingModifierを黙って消していたため、「？」や「。」の保留状態のまま
+// 分かち書きに進むと、その文字が永遠に確定されずに消えてしまっていた。
+function flushPendingModifier() {
+  if (!state.pendingModifier) {
+    return;
+  }
+  const fallback = state.pendingModifier === "goyoon_daku" ? "。" : "？";
   state.pendingModifier = null;
+  state.history.push(fallback);
+}
+
+function insertSpace() {
+  // 分かち書きの区切り。保留中の符号があれば先に確定させてから、
+  // 数字モードなど他の非対象マスと同様にここで解除する。
+  flushPendingModifier();
+  state.numberMode = false;
   state.history.push(" ");
   updateView();
 }
